@@ -30,9 +30,17 @@ def get_border_faces_mask(mesh_faces, vertices_mask):
     return (0 < inside_vertices_count) & (inside_vertices_count < mesh_faces.shape[1])
 
 
-def get_inside_faces_mask(mesh_faces, vertices_mask):
-    """ Returns mask of faces that are inside a given mask """
-    return np.all(vertices_mask[mesh_faces], axis=1)
+def get_inside_faces_mask(mesh_faces, vertices_mask, border=False):
+    """
+    Returns mask of faces that are inside a given mask.
+    
+    Optionaly include border faces.
+    """
+
+    if border:
+        return np.any(vertices_mask[mesh_faces], axis=1)
+    else:
+        return np.all(vertices_mask[mesh_faces], axis=1)
 
 
 def get_border_vertices_mask(mesh_faces, vertices_mask, border_faces_mask=None, outside=False):
@@ -61,15 +69,56 @@ def get_border_vertices_mask(mesh_faces, vertices_mask, border_faces_mask=None, 
     return border_vertices_mask
 
 
-def get_boolean_difference(meshA, meshB, vertices_mask):
+def get_boolean_difference(verticesA, facesA, verticesB, facesB, vertices_mask=None, rtol=1e-5, atol=1e-8):
     """
     Boolean difference of a mesh and a displacement of the same mesh.
 
-    The two meshes should differ on for the vertices designated by
-    the given mask.
+    Optional mask of vertices on which the two meshes differ.
     """
 
-    pass 
+    # TODO: using ids (from nonzero) instead of mask is maybe faster (if needed)
+
+    # Difference mask
+    if vertices_mask is None:
+        vertices_mask = np.logical_not(np.isclose(verticesA, verticesB, rtol, atol))
+    vertices_cnt = vertices_mask.sum()
+
+    # Faces
+    faces_mask = get_inside_faces_mask(facesA, vertices_mask, border=True)
+    faces_cnt = faces_mask.sum()
+
+    # Border faces
+    border_faces_mask = get_border_faces_mask(facesA, vertices_mask)
+    border_faces_cnt = border_faces_mask.sum()
+
+    # Outside border vertices
+    outside_border_vertices_mask = get_border_vertices_mask(facesA, vertices_mask, border_faces_mask, outside=True)
+    outside_border_vertices_cnt = outside_border_vertices_mask.sum()
+
+    # Allocate vertices and faces of the resulting mesh
+    vertices = np.empty((outside_border_vertices_cnt + 2*vertices_cnt, verticesA.shape[1]), verticesA.dtype)
+    faces = np.empty((2 * faces_cnt, facesA.shape[1]), facesA.dtype)
+   
+    # Initialiazing vertices id map
+    vertices_id_map = np.arange(verticesA.shape[0]) # TODO: reduced length depending on maximum of vertices id
+
+    # Renumbering vertices of the outside border
+    #outside_border_vertices_id = np.flatnonzero(outside_border_vertices_mask)
+    vertices_id_map[outside_border_vertices_mask] = np.arange(outside_border_vertices_cnt)
+    vertices[:outside_border_vertices_cnt] = verticesA[outside_border_vertices_mask, :]
+
+    # Inserting front faces
+    vertices_id_map[vertices_mask] = outside_border_vertices_cnt + np.arange(vertices_cnt)
+    vertices[outside_border_vertices_cnt:(outside_border_vertices_cnt + vertices_cnt)] = verticesA[vertices_mask]
+    faces[:faces_cnt] = vertices_id_map[facesA[faces_mask, :]]
+
+    # Inserting back faces
+    vertices_id_map[vertices_mask] = outside_border_vertices_cnt + vertices_cnt + np.arange(vertices_cnt)
+    vertices[-vertices_cnt:] = verticesB[vertices_mask]
+    faces[-faces_cnt:] = vertices_id_map[facesB[faces_mask, ::-1]]
+
+    return vertices, faces
+
 
 displace_length = 1e-2
 
@@ -104,6 +153,7 @@ if any(k not in mesh.point_data for k in ('nx', 'ny', 'nz')):
 print("OK.")
 
 mesh_vertices = mesh.points
+mesh_vertices_displaced = mesh_vertices.copy()
 mesh_tcoords = np.hstack((mesh.point_data['s'][:, None], mesh.point_data['t'][:, None]))
 mesh_normals = np.hstack((mesh.point_data['nx'][:, None], mesh.point_data['ny'][:, None], mesh.point_data['nz'][:, None]))
 mesh_faces = mesh.cells[0].data
@@ -121,11 +171,21 @@ print("Done.")
 print("Displacing mesh... ", end='', flush=True)
 vertex_color = get_vertex_color_from_texture(mesh_tcoords, texture)
 displace_mask = vertex_color == 255
-displace_mask = get_border_vertices_mask(mesh_faces, displace_mask, outside=True)
-mesh_vertices[displace_mask, :] -= displace_length * mesh_normals[displace_mask, :]
+#displace_mask = get_border_vertices_mask(mesh_faces, displace_mask, outside=True)
+mesh_vertices_displaced[displace_mask, :] -= displace_length * mesh_normals[displace_mask, :]
+print("Done.")
+
+# Difference mesh
+print("Difference mesh... ", end='', flush=True)
+vertices_diff, faces_diff = get_boolean_difference(mesh_vertices, mesh_faces, mesh_vertices_displaced, mesh_faces, displace_mask)
 print("Done.")
 
 # Writing resulting mesh
-print("Writing mesh... ", end='', flush=True)
-meshio.write("test.ply", mesh)
+print("Writing displaced mesh... ", end='', flush=True)
+meshio.write_points_cells("testA.ply", mesh_vertices_displaced, mesh.cells)
 print("Done.")
+
+print("Writing difference mesh... ", end='', flush=True)
+meshio.write_points_cells("testB.ply", vertices_diff, [("triangle", faces_diff)])
+print("Done.")
+
