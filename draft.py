@@ -14,7 +14,7 @@ def get_vertex_color_from_texture(mesh_tcoords, texture):
     """ From a texture and the texture coords of a mesh, returns the color per vertex """
     tcoords_scaled = np.minimum(
         np.array(texture.shape) - 1,
-        np.maximum((0, 0), 
+        np.maximum((0, 0),
                    np.floor(mesh_tcoords * texture.shape).astype(np.int64)))
 
     return texture[tcoords_scaled[:, 0], tcoords_scaled[:, 1], ...]
@@ -33,7 +33,7 @@ def get_border_faces_mask(mesh_faces, vertices_mask):
 def get_inside_faces_mask(mesh_faces, vertices_mask, border=False):
     """
     Returns mask of faces that are inside a given mask.
-    
+
     Optionaly include border faces.
     """
 
@@ -46,11 +46,11 @@ def get_inside_faces_mask(mesh_faces, vertices_mask, border=False):
 def get_border_vertices_mask(mesh_faces, vertices_mask, border_faces_mask=None, outside=False):
     """
     Returns mask of vertices that are on the inside (or outside) bounds of a given mask
-    
+
     Optional mask of border faces calculated from get_border_faces_maks.
     Set outside to True to return the mask of the outside bounds.
     """
-   
+
     # Mask of faces that lie on the border
     if border_faces_mask is None:
         border_faces_mask = get_border_faces_mask(mesh_faces, vertices_mask)
@@ -69,7 +69,7 @@ def get_border_vertices_mask(mesh_faces, vertices_mask, border_faces_mask=None, 
     return border_vertices_mask
 
 
-def get_boolean_difference(verticesA, facesA, verticesB, facesB, vertices_mask=None, rtol=1e-5, atol=1e-8):
+def get_boolean_difference(verticesA, verticesB, faces, vertices_mask=None, rtol=1e-5, atol=1e-8):
     """
     Boolean difference of a mesh and a displacement of the same mesh.
 
@@ -80,44 +80,44 @@ def get_boolean_difference(verticesA, facesA, verticesB, facesB, vertices_mask=N
 
     # Difference mask
     if vertices_mask is None:
-        vertices_mask = np.logical_not(np.isclose(verticesA, verticesB, rtol, atol))
+        vertices_mask = np.logical_not(np.all(np.isclose(verticesA, verticesB, rtol, atol), axis=1))
     vertices_cnt = vertices_mask.sum()
 
     # Faces
-    faces_mask = get_inside_faces_mask(facesA, vertices_mask, border=True)
+    faces_mask = get_inside_faces_mask(faces, vertices_mask, border=True)
     faces_cnt = faces_mask.sum()
 
     # Border faces
-    border_faces_mask = get_border_faces_mask(facesA, vertices_mask)
+    border_faces_mask = get_border_faces_mask(faces, vertices_mask)
     border_faces_cnt = border_faces_mask.sum()
 
     # Outside border vertices
-    outside_border_vertices_mask = get_border_vertices_mask(facesA, vertices_mask, border_faces_mask, outside=True)
+    outside_border_vertices_mask = get_border_vertices_mask(faces, vertices_mask, border_faces_mask, outside=True)
     outside_border_vertices_cnt = outside_border_vertices_mask.sum()
 
     # Allocate vertices and faces of the resulting mesh
-    vertices = np.empty((outside_border_vertices_cnt + 2*vertices_cnt, verticesA.shape[1]), verticesA.dtype)
-    faces = np.empty((2 * faces_cnt, facesA.shape[1]), facesA.dtype)
-   
+    diff_vertices = np.empty((outside_border_vertices_cnt + 2*vertices_cnt, verticesA.shape[1]), verticesA.dtype)
+    diff_faces = np.empty((2 * faces_cnt, faces.shape[1]), faces.dtype)
+
     # Initialiazing vertices id map
     vertices_id_map = np.arange(verticesA.shape[0]) # TODO: reduced length depending on maximum of vertices id
 
     # Renumbering vertices of the outside border
     #outside_border_vertices_id = np.flatnonzero(outside_border_vertices_mask)
     vertices_id_map[outside_border_vertices_mask] = np.arange(outside_border_vertices_cnt)
-    vertices[:outside_border_vertices_cnt] = verticesA[outside_border_vertices_mask, :]
+    diff_vertices[:outside_border_vertices_cnt] = verticesA[outside_border_vertices_mask, :]
 
     # Inserting front faces
     vertices_id_map[vertices_mask] = outside_border_vertices_cnt + np.arange(vertices_cnt)
-    vertices[outside_border_vertices_cnt:(outside_border_vertices_cnt + vertices_cnt)] = verticesA[vertices_mask]
-    faces[:faces_cnt] = vertices_id_map[facesA[faces_mask, :]]
+    diff_vertices[outside_border_vertices_cnt:(outside_border_vertices_cnt + vertices_cnt)] = verticesA[vertices_mask]
+    diff_faces[:faces_cnt] = vertices_id_map[faces[faces_mask, :]]
 
-    # Inserting back faces
+    # Inserting back faces with flipped triangles
     vertices_id_map[vertices_mask] = outside_border_vertices_cnt + vertices_cnt + np.arange(vertices_cnt)
-    vertices[-vertices_cnt:] = verticesB[vertices_mask]
-    faces[-faces_cnt:] = vertices_id_map[facesB[faces_mask, ::-1]]
+    diff_vertices[-vertices_cnt:] = verticesB[vertices_mask]
+    diff_faces[-faces_cnt:] = vertices_id_map[faces[faces_mask, ::-1]]
 
-    return vertices, faces
+    return diff_vertices, diff_faces
 
 
 displace_length = 1e-2
@@ -177,7 +177,8 @@ print("Done.")
 
 # Difference mesh
 print("Difference mesh... ", end='', flush=True)
-vertices_diff, faces_diff = get_boolean_difference(mesh_vertices, mesh_faces, mesh_vertices_displaced, mesh_faces, displace_mask)
+vertices_diff, faces_diff = get_boolean_difference(mesh_vertices, mesh_vertices_displaced, mesh_faces, displace_mask)
+#vertices_diff, faces_diff = get_boolean_difference(mesh_vertices, mesh_vertices_displaced, mesh_faces)
 print("Done.")
 
 # Writing resulting mesh
