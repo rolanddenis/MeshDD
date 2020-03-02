@@ -210,6 +210,12 @@ print("Reading mesh... ", end='', flush=True)
 mesh_vertices, mesh_faces, mesh_normals, mesh_tcoords = mesh_io_interface.read(mesh_file)
 print("Done.")
 
+# Optional mesh for the normals
+if len(sys.argv) >= 4:
+    print("Reading mesh for the normals... ", end='', flush=True)
+    _, _, mesh_normals, _ = mesh_io_interface.read(sys.argv[3])
+    print("Done.")
+
 # Checking mesh
 print("Checking mesh... ", end='', flush=True)
 if mesh_tcoords is None:
