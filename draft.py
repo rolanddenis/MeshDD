@@ -248,10 +248,10 @@ print("Done.")
 
 # Writing resulting mesh
 print("Writing displaced mesh... ", end='', flush=True)
-mesh_io_interface.write("testA.ply", mesh_vertices_displaced, mesh_faces)
+mesh_io_interface.write("testA.stl", mesh_vertices_displaced, mesh_faces)
 print("Done.")
 
 print("Writing difference mesh... ", end='', flush=True)
-mesh_io_interface.write("testB.ply", vertices_diff, faces_diff)
+mesh_io_interface.write("testB.stl", vertices_diff, faces_diff)
 print("Done.")
 
