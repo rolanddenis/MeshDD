@@ -120,6 +120,77 @@ def get_boolean_difference(verticesA, verticesB, faces, vertices_mask=None, rtol
     return diff_vertices, diff_faces
 
 
+class MeshIOInterface:
+    """ Mesh reader/writer interface for meshio """
+
+    def read(self, mesh_file):
+        assert mesh_file[-4:] == '.ply', "Only PLY format for input mesh"
+
+        # Read mesh
+        import meshio
+        mesh = meshio.read(mesh_file)
+
+        # Check that it is triangulated
+        assert len(mesh.cells) == 1 and mesh.cells[0].type == 'triangle', "Mesh must be triangulated!"
+
+        # Extract normals
+        if all(k in mesh.point_data for k in ('nx', 'ny', 'nz')):
+            normals = np.hstack((mesh.point_data['nx'][:, None],
+                                 mesh.point_data['ny'][:, None],
+                                 mesh.point_data['nz'][:, None]))
+        else:
+            normals = None
+
+        # Extract texture coordinates
+        if all(k in mesh.point_data for k in ('s', 't')):
+            tcoords = np.hstack((mesh.point_data['s'][:, None],
+                                 mesh.point_data['t'][:, None]))
+        else:
+            tcoords = None
+
+        return mesh.points, mesh.cells[0].data, normals, tcoords
+
+    def write(self, mesh_file, vertices, faces):
+        import meshio
+        meshio.write_points_cells(mesh_file, vertices, [("triangle", faces)])
+
+
+class PyMeshInterface:
+    """ Mesh reader/writer interface for pymesh """
+
+    def read(self, mesh_file):
+        assert mesh_file[-4:] == '.ply', "Only PLY format for input mesh"
+
+        # Read mesh
+        import pymesh
+        mesh = pymesh.load_mesh(mesh_file)
+
+        # Check that it is triangulated
+        assert mesh.faces.shape[1] == 3, "Mesh must be triangulated!"
+
+        # Extract normals
+        if all(k in mesh.get_attribute_names() for k in ('vertex_nx', 'vertex_ny', 'vertex_nz')):
+            normals = np.hstack((mesh.get_attribute('vertex_nx')[:, None],
+                                 mesh.get_attribute('vertex_ny')[:, None],
+                                 mesh.get_attribute('vertex_nz')[:, None]))
+        else:
+            normals = None
+
+        # Extract texture coordinates
+        if all(k in mesh.get_attribute_names() for k in ('vertex_s', 'vertex_t')):
+            tcoords = np.hstack((mesh.get_attribute('vertex_s')[:, None],
+                                 mesh.get_attribute('vertex_t')[:, None]))
+        else:
+            tcoords = None
+
+        return mesh.vertices, mesh.faces, normals, tcoords
+
+    def write(self, mesh_file, vertices, faces):
+        import pymesh
+        pymesh.save_mesh_raw(mesh_file, vertices, faces)
+
+
+
 displace_length = 1e-2
 
 # Command-line parameters
@@ -130,33 +201,26 @@ if len(sys.argv) < 3:
 
 mesh_file, texture_file = sys.argv[1:3]
 
+# Mesh IO interface
+#mesh_io_interface = MeshIOInterface()
+mesh_io_interface = PyMeshInterface()
+
 # Reading mesh
 print("Reading mesh... ", end='', flush=True)
-import meshio
-mesh = meshio.read(mesh_file)
+mesh_vertices, mesh_faces, mesh_normals, mesh_tcoords = mesh_io_interface.read(mesh_file)
 print("Done.")
 
 # Checking mesh
 print("Checking mesh... ", end='', flush=True)
-if any(cb.type != 'triangle' for cb in mesh.cells):
-    print("Works only on triangulated mesh!", file=sys.stderr)
-    sys.exit(2)
-
-if any(k not in mesh.point_data for k in ('s', 't')):
+if mesh_tcoords is None:
     print("Missing texture coordinates (UV)!", file=sys.stderr)
     sys.exit(2)
 
-if any(k not in mesh.point_data for k in ('nx', 'ny', 'nz')):
+if mesh_normals is None:
     print("Missing normals!", file=sys.stderr)
     sys.exit(2)
 
 print("OK.")
-
-mesh_vertices = mesh.points
-mesh_vertices_displaced = mesh_vertices.copy()
-mesh_tcoords = np.hstack((mesh.point_data['s'][:, None], mesh.point_data['t'][:, None]))
-mesh_normals = np.hstack((mesh.point_data['nx'][:, None], mesh.point_data['ny'][:, None], mesh.point_data['nz'][:, None]))
-mesh_faces = mesh.cells[0].data
 
 print(f"#vertex={mesh_vertices.shape[0]} #triangles={mesh_faces.shape[0]}")
 print(f"Mesh bounds: min={np.amin(mesh_vertices, axis=0)} max={np.amax(mesh_vertices, axis=0)}")
@@ -172,6 +236,7 @@ print("Displacing mesh... ", end='', flush=True)
 vertex_color = get_vertex_color_from_texture(mesh_tcoords, texture)
 displace_mask = vertex_color == 255
 #displace_mask = get_border_vertices_mask(mesh_faces, displace_mask, outside=True)
+mesh_vertices_displaced = mesh_vertices.copy()
 mesh_vertices_displaced[displace_mask, :] -= displace_length * mesh_normals[displace_mask, :]
 print("Done.")
 
@@ -183,10 +248,10 @@ print("Done.")
 
 # Writing resulting mesh
 print("Writing displaced mesh... ", end='', flush=True)
-meshio.write_points_cells("testA.ply", mesh_vertices_displaced, mesh.cells)
+mesh_io_interface.write("testA.ply", mesh_vertices_displaced, mesh_faces)
 print("Done.")
 
 print("Writing difference mesh... ", end='', flush=True)
-meshio.write_points_cells("testB.ply", vertices_diff, [("triangle", faces_diff)])
+mesh_io_interface.write("testB.ply", vertices_diff, faces_diff)
 print("Done.")
 
