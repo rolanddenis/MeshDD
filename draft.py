@@ -185,6 +185,38 @@ class PyMeshInterface:
 
         return mesh.vertices, mesh.faces, normals, tcoords
 
+    def clean(self, vertices, faces, normals=None, tcoords=None):
+        import pymesh
+
+        # Removing duplicated vertices
+        vertices, faces, info = pymesh.remove_duplicated_vertices_raw(vertices, faces)
+
+        if normals is not None:
+            cleaned_normals = np.empty((vertices.shape[0], normals.shape[1]), dtype=normals.dtype)
+            cleaned_normals[info['index_map'], :] = normals
+        else:
+            cleaned_normals = None
+
+        if tcoords is not None:
+            cleaned_tcoords = np.empty((vertices.shape[0], tcoords.shape[1]), dtype=tcoords.dtype)
+            cleaned_tcoords[info['index_map'], :] = tcoords
+        else:
+            cleaned_tcoords = None
+
+        # Removing degenerated triangles
+        # FIXME: Returned vertices are modified (order probably) without a way
+        #        to get the map so that to update the attributes...
+        #vertices, faces, info = pymesh.remove_degenerated_triangles_raw(vertices, faces)
+
+        # Removing degenerated triangles
+        # Only the triangles with duplicated vertices
+        mask = np.logical_or(np.logical_or(faces[:, 0] == faces[:, 1],
+                                           faces[:, 0] == faces[:, 2]),
+                             faces[:, 1] == faces[:, 2])
+        faces = faces[np.logical_not(mask), :]
+
+        return vertices, faces, cleaned_normals, cleaned_tcoords
+
     def write(self, mesh_file, vertices, faces):
         import pymesh
         pymesh.save_mesh_raw(mesh_file, vertices, faces)
