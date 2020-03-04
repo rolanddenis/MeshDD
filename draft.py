@@ -2,6 +2,12 @@
 
 import numpy as np
 
+def get_texture_from_image(image):
+    """ Transform an image into a texture"""
+
+    # Image axis order is reversed and origin is in the up-left corner.
+    return np.swapaxes(image, 0, 1)[:, ::-1, ...]
+
 def get_texture_from_file(texture_file):
     """ Read texture from an image """
     import imageio
@@ -9,6 +15,10 @@ def get_texture_from_file(texture_file):
     # Image axis order is reversed and origin is in the up-left corner.
     return imageio.imread(texture_file).T[:, ::-1]
 
+def displace_vertices(vertices, normals, length=1, mask=True):
+    """ Displace vertices by given length along normals where mask is True """
+    # Multiplicating length by normal before applying mask to allow broadcasting
+    return vertices + np.atleast_1d(length * mask)[:, None] * normals
 
 def get_vertex_color_from_texture(mesh_tcoords, texture):
     """ From a texture and the texture coords of a mesh, returns the color per vertex """
