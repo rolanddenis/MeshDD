@@ -51,6 +51,6 @@ def create_sphere(Ntheta, Nphi):
     triangles[-theta.size:, 2] = num_vertices - 1
     triangles[-1, 1] -= theta.size
 
-    return vertices, triangles, vertices, tcoords
+    return vertices, triangles, vertices.copy(), (tcoords + [0, np.pi/2]) / [2*np.pi, np.pi]
 
 
