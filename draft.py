@@ -231,6 +231,80 @@ class PyMeshInterface:
         import pymesh
         pymesh.save_mesh_raw(mesh_file, vertices, faces)
 
+class TrimeshInterface:
+    """ Mesh reader/writer interface for trimesh """
+
+    def read(self, mesh_file):
+        assert mesh_file[-4:] == '.ply', "Only PLY format for input mesh"
+
+        # Read mesh (no cleaning before extracting vertex attributes)
+        import trimesh
+        mesh = trimesh.load(mesh_file, process=False)
+
+        # Check that it is triangulated
+        assert mesh.faces.shape[1] == 3, "Mesh must be triangulated!"
+
+        # Additional fields are not extracted as vertex attributes
+        # but still accessible in the metadata
+        extra_fields = mesh.metadata['ply_raw']['vertex']['data']
+
+        # Extract normals
+        if 'vertex_normals' in mesh._cache:
+            normals = mesh.vertex_normals
+        elif all(k in extra_fields.dtype.names for k in ('nx', 'ny', 'nz')):
+            normals = np.hstack((extra_fields['nx'][:, None],
+                                 extra_fields['ny'][:, None],
+                                 extra_fields['nz'][:, None]))
+        else:
+            normals = None
+
+        # Extract texture coordinates
+        if all(k in extra_fields.dtype.names for k in ('s', 't')):
+            tcoords = np.hstack((extra_fields['s'][:, None],
+                                 extra_fields['t'][:, None]))
+        else:
+            tcoords = None
+
+        return mesh.vertices, mesh.faces, normals, tcoords
+
+    def clean(self, vertices, faces, normals=None, tcoords=None):
+        """ Remove duplicated vertices and degenerated triangles """
+
+        import trimesh
+
+        # Creating mesh
+        # Not adding vertex normals since they disappear during cleaning pass
+        mesh = trimesh.Trimesh(vertices=vertices,
+                               faces=faces,
+                               process=False)
+
+        # Populating vertex attributes
+        if tcoords is not None:
+            mesh.vertex_attributes['tcoords'] = tcoords
+        if normals is not None:
+            mesh.vertex_attributes['normals'] = normals
+
+        # Cleaning
+        mesh.merge_vertices()
+        mesh.remove_degenerate_faces()
+
+        return (mesh.vertices,
+                mesh.faces,
+                mesh.vertex_attributes.get('normals', None),
+                mesh.vertex_attributes.get('tcoords', None))
+
+
+    def write(self, mesh_file, vertices, faces):
+        import trimesh
+
+        # Creating mesh
+        mesh = trimesh.Trimesh(vertices=vertices,
+                               faces=faces,
+                               process=False)
+
+        trimesh.exchange.export.export_mesh(mesh, mesh_file)
+
+
 if __name__ == "__main__":
 
     displace_length = 1e-2
@@ -246,6 +320,7 @@ if __name__ == "__main__":
     # Mesh IO interface
     #mesh_io_interface = MeshIOInterface()
     mesh_io_interface = PyMeshInterface()
+    #mesh_io_interface = TrimeshInterface()
 
     # Reading mesh
     print("Reading mesh... ", end='', flush=True)
@@ -260,8 +335,10 @@ if __name__ == "__main__":
 
     # Cleaning mesh
     print("Cleaning mesh... ", end='', flush=True)
+    num_vertices = mesh_vertices.shape[0]
+    num_faces = mesh_faces.shape[0]
     mesh_vertices, mesh_faces, mesh_normals, mesh_tcoords = mesh_io_interface.clean(mesh_vertices, mesh_faces, mesh_normals, mesh_tcoords)
-    print("Done.")
+    print(f"Done ({mesh_vertices.shape[0] - num_vertices} vertices & {mesh_faces.shape[0] - num_faces} faces).")
 
     # Checking mesh
     print("Checking mesh... ", end='', flush=True)
