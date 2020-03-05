@@ -195,11 +195,11 @@ class PyMeshInterface:
 
         return mesh.vertices, mesh.faces, normals, tcoords
 
-    def clean(self, vertices, faces, normals=None, tcoords=None):
+    def clean(self, vertices, faces, normals=None, tcoords=None, tol=1e-12):
         import pymesh
 
         # Removing duplicated vertices
-        vertices, faces, info = pymesh.remove_duplicated_vertices_raw(vertices, faces)
+        vertices, faces, info = pymesh.remove_duplicated_vertices_raw(vertices, faces, tol)
 
         if normals is not None:
             cleaned_normals = np.empty((vertices.shape[0], normals.shape[1]), dtype=normals.dtype)
@@ -267,7 +267,7 @@ class TrimeshInterface:
 
         return mesh.vertices, mesh.faces, normals, tcoords
 
-    def clean(self, vertices, faces, normals=None, tcoords=None):
+    def clean(self, vertices, faces, normals=None, tcoords=None, tol=1e-12):
         """ Remove duplicated vertices and degenerated triangles """
 
         import trimesh
@@ -285,6 +285,7 @@ class TrimeshInterface:
             mesh.vertex_attributes['normals'] = normals
 
         # Cleaning
+        trimesh.constants.tol.merge = tol
         mesh.merge_vertices()
         mesh.remove_degenerate_faces()
 
@@ -319,8 +320,8 @@ if __name__ == "__main__":
 
     # Mesh IO interface
     #mesh_io_interface = MeshIOInterface()
-    mesh_io_interface = PyMeshInterface()
-    #mesh_io_interface = TrimeshInterface()
+    #mesh_io_interface = PyMeshInterface()
+    mesh_io_interface = TrimeshInterface()
 
     # Reading mesh
     print("Reading mesh... ", end='', flush=True)
