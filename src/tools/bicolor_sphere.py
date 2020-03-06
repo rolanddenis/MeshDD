@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 
-from .. import meshdd
-from . import shapes
-
 import numpy as np
+
+import meshdd
+from meshdd.tools import shapes
+
 
 # Default values for the parameters
 defaults = {
@@ -13,6 +14,7 @@ defaults = {
     'threshold': 128,
     'depth': 1.2,
 }
+
 
 def create_bicolor_sphere(texture,
                           Ntheta=defaults['Ntheta'],
@@ -65,7 +67,6 @@ def create_bicolor_sphere(texture,
 def main():
     import argparse
     import os
-    import meshdd
 
     # Command-line parameters
     parser = argparse.ArgumentParser(
@@ -114,3 +115,5 @@ def main():
     print("Done.")
 
 
+if __name__ == "__main__":
+    main()
