@@ -12,7 +12,10 @@ setup(name='MeshDD',
       requires=['numpy'],
       extras_require={'tools': ['imageio', 'scipy', 'meshio', 'pymesh2', 'trimesh']},
       entry_points={
-          'console_scripts': ['meshdd_bicolor_sphere = meshdd.tools.bicolor_sphere:main']
+          'console_scripts': [
+              'meshdd_bicolor_sphere = meshdd.tools.bicolor_sphere:main',
+              'meshdd_tricolor_earth = meshdd.tools.tricolor_earth:main',
+          ]
       },
 )
 
