@@ -15,6 +15,7 @@ setup(name='MeshDD',
           'console_scripts': [
               'meshdd_bicolor_sphere = meshdd.tools.bicolor_sphere:main',
               'meshdd_tricolor_earth = meshdd.tools.tricolor_earth:main',
+              'meshdd_bicolor_mesh = meshdd.tools.bicolor_mesh:main',
           ]
       },
 )

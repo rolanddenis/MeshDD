@@ -24,6 +24,7 @@ def create_bicolor_sphere(texture,
                           reverse=False,
                           depth=defaults['depth'],
                           verbose=False):
+    """ Split a sphere in two parts based on a given texture. """
 
     # Verbose messages
     def info(*args, **kwargs):
