@@ -9,7 +9,7 @@ def get_texture_from_image(image):
 def displace_vertices(vertices, directions, length=1., mask=True):
     """ Displace vertices by given length along directions where mask is True """
     # Multiplicating length by mask beforehand to allow broadcasting
-    return vertices + np.atleast_1d(length * mask)[:, None] * normals
+    return vertices + np.atleast_1d(length * mask)[:, None] * directions
 
 def get_vertex_color_from_texture(tcoords, texture):
     """ From a texture and the texture coords of a mesh, returns the color per vertex """

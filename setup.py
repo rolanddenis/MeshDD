@@ -1,18 +1,18 @@
 #!/usr/bin/env python
 
-from distutils.core import setup
+from setuptools import setup
 
-setup(name='meshdd',
+setup(name='MeshDD',
       version='0.1',
-      description='Displace a mesh and extract boolean difference for multi-colors 3D printing',
+      description='Displace a mesh and extract boolean Difference for multi-colors 3D printing',
       author='Roland Denis',
       author_email='denis@math.univ-lyon1.fr',
       packages=['meshdd', 'meshdd.tools'],
-      packages_dir={'meshdd': 'src'},
+      package_dir={'meshdd': 'src'},
       requires=['numpy'],
-      extra_requires={'tools': ['imageio', 'scipy', 'meshio', 'pymesh2', 'trimesh']},
+      extras_require={'tools': ['imageio', 'scipy', 'meshio', 'pymesh2', 'trimesh']},
       entry_points={
-          'console_scripts': ['meshdd_sphere_two_colors=meshdd.tools.sphere_two_colors']
+          'console_scripts': ['meshdd_bicolor_sphere = meshdd.tools.bicolor_sphere:main']
       },
 )
-                    
+
