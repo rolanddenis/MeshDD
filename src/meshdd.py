@@ -1,18 +1,68 @@
 import numpy as np
 
 def get_texture_from_image(image):
-    """ Transform an image into a texture"""
+    """
+    Transforms an image into a texture by swaping and reordering axes.
+
+    So that to match XY coordinates.
+
+    Parameters
+    ----------
+    image: (p, q,)
+        Image array with at least 2 dimensions
+
+    Returns
+    -------
+    texture: (q, p,)
+        Array with same datatype but swapped and reordered axes
+    """
 
     # Image axis order is reversed and origin is in the up-left corner.
     return np.swapaxes(image, 0, 1)[:, ::-1, ...]
 
+
 def displace_vertices(vertices, directions, length=1., mask=True):
-    """ Displace vertices by given length along directions where mask is True """
+    """
+    Displaces vertices by given length along directions where mask is True
+    
+    Parameters
+    ----------
+    vertices: (n, d) float
+        Mesh vertices
+    directions: (n, d) float
+        Directions of displacement (e.g. the mesh normals)
+    length: scalar, (n) or (n, d) float
+        Length of displacement
+    mask: (n) bool
+        Mask of which vertices will be displaced
+
+    Returns
+    -------
+    displaced_vertices: (n, d) float
+        Displaced vertices
+    """
+
     # Multiplicating length by mask beforehand to allow broadcasting
     return vertices + np.atleast_1d(length * mask)[:, None] * directions
 
+
 def get_vertex_color_from_texture(tcoords, texture):
-    """ From a texture and the texture coords of a mesh, returns the color per vertex """
+    """
+    From a texture and the texture coords of a mesh, returns the color per vertex
+    
+    Parameters
+    ----------
+    tcoords: (n, 2) float
+        Texture coordinates for each vertice
+    texture: (p, q,) any
+        Array of the texture color
+
+    Returns
+    -------
+    vertex_color: (n,) any
+        texture sampled at each texture coordinate
+    """
+
     tcoords_scaled = np.minimum(
         np.array(texture.shape) - 1,
         np.maximum((0, 0),
@@ -22,7 +72,21 @@ def get_vertex_color_from_texture(tcoords, texture):
 
 
 def get_border_faces_mask(faces, vertices_mask):
-    """ Returns mask of faces that are on the the bounds of a given mask """
+    """
+    Returns mask of faces that are on the the bounds of a given mask
+
+    Parameters
+    ----------
+    faces: (n, d) int
+        Mesh faces defined by vertices indexes
+    vertices_mask: (m) bool
+        Mask corresponding to a subset of vertices
+
+    Returns
+    -------
+    border_faces_mask: (n) bool
+        Mask of the faces that cross the border of the vertices mask
+    """
 
     # Per face, count vertices that are inside the mask
     inside_vertices_count = vertices_mask[faces].sum(axis=1)
@@ -36,6 +100,21 @@ def get_inside_faces_mask(faces, vertices_mask, border=False):
     Returns mask of faces that are inside a given mask.
 
     Optionaly includes border faces.
+
+    Parameters
+    ----------
+    faces: (n, d) int
+        Mesh faces defined by vertices indexes
+    vertices_mask: (m) bool
+        Mask corresponding to a subset of vertices
+    border: bool
+        True to also includes faces that cross the border
+
+    Returns
+    -------
+    inside_faces_mask: (n) bool
+        Mask of the faces that are fully (or partially with border set to True)
+        inside the vertices mask.
     """
 
     if border:
@@ -48,8 +127,26 @@ def get_border_vertices_mask(faces, vertices_mask, border_faces_mask=None, outsi
     """
     Returns mask of vertices that are on the inside (or outside) bounds of a given mask
 
-    Optional mask of border faces calculated from get_border_faces_maks.
+    Optional mask of border faces calculated from `get_border_faces_mask`.
     Set outside to True to return the mask of the outside bounds.
+
+    Parameters
+    ----------
+    faces: (n, d) int
+        Mesh faces defined by vertices indexes
+    vertices_mask: (m) bool
+        Mask corresponding to a subset of vertices
+    border_faces_mask: (n) bool or None
+        Precalculated mask of faces that cross the border of the vertices mask
+        See `get_border_faces_mask`.
+    outside: bool
+        True to returns vertices that are on the outside border instead
+
+    Returns
+    -------
+    border_vertices_mask: (m) bool
+        Mask of the vertices that are on the border (inside or outside)
+        of the given vertices subset.
     """
 
     # Mask of faces that lie on the border
@@ -75,6 +172,23 @@ def get_boolean_difference(verticesA, verticesB, faces, vertices_mask=None, rtol
     Boolean difference of a mesh and a displacement of the same mesh.
 
     Optional mask of vertices on which the two meshes differ.
+
+    Parameters
+    ----------
+    verticesA: (n, d) float
+        Vertices of the first mesh
+    verticesB: (n, d) float
+        Vertices of the second mesh
+    faces: (n, d) int
+        Faces of both meshes defined by vertices indexes
+    vertices_mask: (n) bool or None
+        Mask of the vertices for which to calculate the boolean difference.
+        If None, the mask is calculated from the vertices that differ between
+        the two meshes, using `numpy.isclose`.
+    rtol: float
+        Relative tolerance when calculating vertices mask (see numpy.isclose)
+    atol: float
+        Abslute tolerance when calculating vertices mask (see numpy.isclose)
     """
 
     # TODO: using ids (from nonzero) instead of mask is maybe faster (if needed)
