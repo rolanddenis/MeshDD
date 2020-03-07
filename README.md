@@ -29,6 +29,7 @@ and some examples packaged as command-line scripts.
 
 - works only with triangulated meshes,
 - meshes must differ from their vertices positions only,
+- doesn't handle mesh auto-intersection during displacement,
 - optional mesh reader accepts only PLY format (to have normals and texture coordinates per vertex).
 
 # Requirements
