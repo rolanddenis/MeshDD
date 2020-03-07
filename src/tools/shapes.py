@@ -74,3 +74,72 @@ def create_sphere(Nphi, Ntheta):
     return vertices, triangles, vertices.copy(), (tcoords + [0, np.pi/2]) / [2*np.pi, np.pi]
 
 
+def create_torus(Nx, Ny, R=1., r=0.4):
+    """
+    Generates the mesh of a torus
+
+    Parameters
+    ----------
+    Nx: int
+        Number of discretization points along the major radius
+    Ny: int
+        Number of discretization points along the minor radius
+    R: float
+        The major radius
+    r: float
+        The minor radius
+
+    Returns
+    -------
+    vertices: (n, 3) float
+        Vertices of the torus mesh
+    faces: (m, 3) int
+        Vertices index composing each face
+    normals: (n, 3) float
+        Sphere normal for each vertice
+    tcoords: (n, 2) float
+        Texture coordinates for each vertice
+    """
+
+    import numpy as np
+
+    # Discretizing parameters space
+    x = np.linspace(0, 2*np.pi, Nx+1)[:-1]
+    y = np.linspace(0, 2*np.pi, Ny+1)[:-1]
+    x2d, y2d = np.meshgrid(x, y)
+
+    # Mesh size
+    num_vertices = Nx * Ny
+    num_triangles = 2 * num_vertices
+
+    # Assembling texture coordinates
+    tcoords = np.hstack((x2d.reshape(-1, 1), y2d.reshape(-1, 1)))
+
+    # Assembling vertices coordinates
+    vertices = np.empty((num_vertices, 3))
+    vertices[:, 0] = (R + r * np.cos(tcoords[:, 1])) * np.cos(tcoords[:, 0])
+    vertices[:, 1] = (R + r * np.cos(tcoords[:, 1])) * np.sin(tcoords[:, 0])
+    vertices[:, 2] = r * np.sin(tcoords[:, 1])
+
+    # Assembling normals
+    normals = np.empty((num_vertices, 3))
+    normals[:, 0] = np.cos(tcoords[:, 1]) * np.cos(tcoords[:, 0])
+    normals[:, 1] = np.cos(tcoords[:, 1]) * np.sin(tcoords[:, 0])
+    normals[:, 2] = np.sin(tcoords[:, 1])
+
+    # Assembling triangles
+    triangles = np.empty((num_triangles, 3), dtype=np.int64)
+
+    # Low part
+    triangle_archetype = np.array([0, 1, Nx], dtype=np.int64)
+    triangles[:num_vertices, :] = triangle_archetype + np.arange(num_vertices).reshape(-1, 1)
+    triangles[Nx - 1:num_vertices:Nx, 1] -= Nx
+    triangles[num_vertices - Nx:num_vertices, 2] -= num_vertices
+
+    # High part
+    triangle_archetype = np.array([1, Nx + 1, Nx], dtype=np.int64)
+    triangles[-num_vertices:, :] = triangle_archetype + np.arange(num_vertices).reshape(-1, 1)
+    triangles[-num_vertices + Nx - 1::Nx, :2] -= Nx
+    triangles[-Nx:, 1:] -= num_vertices
+
+    return vertices, triangles, normals, tcoords / (2 * np.pi)
