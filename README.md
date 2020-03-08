@@ -55,7 +55,32 @@ MeshDD can also be used without installation by simply picking the `src/meshdd.p
 
 # Quick Start
 
-TODO
+Here is an example of creating a bicolor ladybird-like torus:
+
+```python
+import numpy as np
+import meshdd
+import meshdd.tools
+
+# Creating a torus with 1001x1001 vertices, major radius of 50 and minor radius of 25
+vertices, faces, normals, tcoords = meshdd.tools.create_torus(1001, 1001, 50, 25)
+
+# Creating the mask for 10x5 circle-like inclusions
+displace_mask = np.square(np.mod(tcoords * [10, 5], 1.) - 0.5).sum(axis=1) <= 0.25**2
+
+# Displacing the original vertices depending on the mask
+displaced_vertices = meshdd.displace_vertices(vertices, normals, -10, displace_mask)
+
+# Calculating the boolean difference between the original mesh and the displaced one
+diff_vertices, diff_faces = meshdd.get_boolean_difference(vertices, displaced_vertices, faces, displace_mask)
+
+# Saving the two meshes using trimesh
+mesh_interface = meshdd.tools.TriMeshInterface()
+mesh_interface.write('torus_displaced.stl', displaced_vertices, faces)
+mesh_interface.write('torus_difference.stl', diff_vertices, diff_faces)
+```
+
+Load the two resulting meshes in you favourite slicer and you will be able to print it using two filaments.
 
 # Examples
 
