@@ -30,7 +30,8 @@ and some examples packaged as command-line scripts.
 - works only with triangulated meshes,
 - meshes must differ from their vertices positions only,
 - doesn't handle mesh auto-intersection during displacement,
-- optional mesh reader accepts only PLY format (to have normals and texture coordinates per vertex).
+- optional mesh reader accepts PLY format only (to have normals and texture coordinates per vertex) but you can use any other format using another mesh library (e.g. [trimesh](https://github.com/mikedh/trimesh)),
+- doesn't adapt or subdivise the mesh to best fit the displacement.
 
 # Requirements
 
