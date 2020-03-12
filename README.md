@@ -85,4 +85,55 @@ Load the two resulting meshes in you favourite slicer and you will be able to pr
 
 # Examples
 
-TODO
+## Bicolor Earth (land/sea)
+
+Starting from a land/water mask image (e.g. the 8192x4096 PNG land/water mask from [Natural Earth III](http://www.shadedrelief.com/natural3/pages/extra.html), smoothed in GIMP using a Gaussian filter of 16px)
+you can split a sphere in a sea and land part for bicolor 3D printing:
+
+```python
+import numpy as np
+import meshdd
+import meshdd.tools
+import imageio
+
+# Creating a sphere of radius 50 with 1001x1001 vertices 
+vertices, faces, normals, tcoords = meshdd.tools.create_sphere(1001, 1001)
+vertices *= 50
+
+# Reading land/water mask and fixing image origin
+texture = meshdd.get_texture_from_image(imageio.imread("water_8k.png"))
+
+# Calculating color per vertex
+vertex_color = meshdd.get_vertex_color_from_texture(tcoords, texture)
+
+# Creating the corresponding mask (sea <=> True)
+displace_mask = vertex_color >= 0.5
+
+# Carving the sea
+displaced_vertices = meshdd.displace_vertices(vertices, normals, -1.2, displace_mask)
+
+# Calculating the sea mesh from the boolean difference with the original sphere
+diff_vertices, diff_faces = meshdd.get_boolean_difference(vertices, displaced_vertices, faces, displace_mask)
+
+# Saving the two meshes using trimesh
+mesh_interface = meshdd.tools.TriMeshInterface()
+mesh_interface.write('earth_land.stl', displaced_vertices, faces)
+mesh_interface.write('earth_sea.stl', diff_vertices, diff_faces)
+```
+
+Take a look at the `src/tools/bicolor_sphere.py` example script, available as `meshdd_bicolor_sphere` after installation.
+
+Also note that the script `src/tools/bicolor_mesh.py` do the same but on a given mesh.
+**TODO:** example code and image on flat torus
+
+## Tricolor Earth (land/sea/ice)
+
+**TODO:** explanations
+
+Take a look at the `src/tools/tricolor_earth.py` example script, available as `meshdd_tricolor_earth` after installation.
+
+## Earth with amplified topography and bathymetry
+
+(e.g. to print the sea with a transparent filament)
+
+**TODO**
