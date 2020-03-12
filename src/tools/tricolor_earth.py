@@ -94,7 +94,7 @@ def main():
     parser.add_argument("--radius", type=float, default=defaults['radius'],
                         help="Sphere radius")
     parser.add_argument("--depth", type=float, default=defaults['depth'],
-                        help="Displaciement depth")
+                        help="Displacement depth")
     parser.add_argument("--sigma", type=float, default=defaults['sigma'],
                         help="Standard deviation used to define the Gaussian blur kernel when splitting texture")
     parser.add_argument("--output", type=str, default="earth.stl",
