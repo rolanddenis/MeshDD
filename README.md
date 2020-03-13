@@ -56,6 +56,8 @@ MeshDD can also be used without installation by simply picking the `src/meshdd.p
 
 # Quick Start
 
+<p align="center"><img src="doc/images/ladybird_torus.jpg?raw=true" alt="Ladybird-like torus" height="400px"></p>
+
 Here is an example of creating a bicolor ladybird-like torus:
 
 ```python
@@ -86,6 +88,8 @@ Load the two resulting meshes in you favourite slicer and you will be able to pr
 # Examples
 
 ## Bicolor Earth (land/sea)
+
+<p align="center"><img src="doc/images/bicolor_earth.jpg?raw=true" alt="Bicolor Earth" height="400px"></p>
 
 Starting from a land/water mask image (e.g. the 8192x4096 PNG land/water mask from [Natural Earth III](http://www.shadedrelief.com/natural3/pages/extra.html), smoothed in GIMP using a Gaussian filter of 16px)
 you can split a sphere in a sea and land part for bicolor 3D printing:
@@ -123,10 +127,36 @@ mesh_interface.write('earth_sea.stl', diff_vertices, diff_faces)
 
 Take a look at the `src/tools/bicolor_sphere.py` example script, available as `meshdd_bicolor_sphere` after installation.
 
+## Bicolor mesh (land/sea)
+
+<p align="center">
+  <img src="doc/images/hevea_bicolor_earth_IC1.jpg?raw=true" alt="Hevea Earth at first iteration" height="400px">
+  <img src="doc/images/hevea_bicolor_earth_IC2.jpg?raw=true" alt="Hevea Earth at second iteration" height="400px">
+</p>
+
 Also note that the script `src/tools/bicolor_mesh.py` do the same but on a given mesh.
-**TODO:** example code and image on flat torus
+It simply use the optional mesh reader interface to read a mesh (left image using a mesh from [Hevea project](http://hevea-project.fr/ENIndexHevea.html)):
+```python
+mesh_interface = meshdd.tools.TriMeshInterface()
+
+# First iteration of shrinking a sphere using convex integration
+vertices, faces, normals, tcoords = mesh_interface.read("hevea_sphere_IC1.ply")
+```
+
+You can also use another normal field (or calculate your own) to avoid self-intersections (right image):
+```python
+mesh_interface = meshdd.tools.TriMeshInterface()
+
+# Second iteration of shrinking a sphere using convex integration
+vertices, faces, normals, tcoords = mesh_interface.read("hevea_sphere_IC2.ply")
+
+# Using smoother normals of first iteration to avoid self-intersections after displacement
+_, _, normals, _ = mesh_interface.read("hevea_sphere_IC1.ply")
+```
 
 ## Tricolor Earth (land/sea/ice)
+
+<p align="center"><img src="doc/images/earth_land_sea_ice.jpg?raw=true" alt="Earth with land, sea and ice" height="400px"></p>
 
 **TODO:** explanations
 
