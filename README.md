@@ -135,7 +135,7 @@ Take a look at the `src/tools/bicolor_sphere.py` example script, available as `m
 </p>
 
 Also note that the script `src/tools/bicolor_mesh.py` do the same but on a given mesh.
-It simply use the optional mesh reader interface to read a mesh (left image using a mesh from [Hevea project](http://hevea-project.fr/ENIndexHevea.html)):
+It simply uses the optional mesh reader interface to read a mesh (left image using a mesh from [Hevea project](http://hevea-project.fr/ENIndexHevea.html)):
 ```python
 mesh_interface = meshdd.tools.TriMeshInterface()
 
@@ -158,7 +158,47 @@ _, _, normals, _ = mesh_interface.read("hevea_sphere_IC1.ply")
 
 <p align="center"><img src="doc/images/earth_land_sea_ice.jpg?raw=true" alt="Earth with land, sea and ice" height="400px"></p>
 
-**TODO:** explanations
+We can also chain displacements and differences to split a mesh in more than two parts,
+for example to extract land, sea and ice parts from [The Blue Marble](https://visibleearth.nasa.gov/images/57730):
+
+```python
+import numpy as np
+import meshdd
+import meshdd.tools
+import imageio
+
+# Creating a sphere of radius 50 with 1001x1001 vertices 
+vertices, faces, normals, tcoords = meshdd.tools.create_sphere(1001, 1001)
+vertices *= 50
+
+# Reading Earth texture
+texture = meshdd.get_texture_from_image(imageio.imread("land_ocean_ice_2048.png"))
+
+# A little elbow grease to separate land, sea and ice and smoothing everything
+from scipy.ndimage.filters import gaussian_filter
+ice_mask = np.logical_and(texture.mean(axis=2) >= 200, texture[:, :, -1] >= np.max(texture[:, :, :2], axis=2))
+sea_mask = texture[:, :, -1] >= 1.5*np.max(texture[:, :, :1], axis=2)
+land_mask = np.logical_not(np.logical_or(ice_mask, sea_mask))
+land_mask = gaussian_filter(land_mask.astype(float), sigma=1) >= 0.5
+ice_mask = gaussian_filter(ice_mask.astype(float), sigma=1) >= 0.5
+sea_mask = np.logical_not(np.logical_or(land_mask, ice_mask))
+
+# Displace and difference for the sea
+displace_mask = meshdd.get_vertex_color_from_texture(tcoords, sea_mask)
+land_tmp_vertices = meshdd.displace_vertices(vertices, normals, -1.2, displace_mask)
+sea_vertices, sea_faces = meshdd.get_boolean_difference(vertices, land_tmp_vertices, faces, displace_mask)
+
+# Displace and difference for the ice
+displace_mask = meshdd.get_vertex_color_from_texture(tcoords, ice_mask)
+land_vertices = meshdd.displace_vertices(land_tmp_vertices, normals, -1.2, displace_mask)
+ice_vertices, ice_faces = meshdd.get_boolean_difference(land_tmp_vertices, land_vertices, faces, displace_mask)
+
+# Saving the meshes using trimesh
+mesh_interface = meshdd.tools.TriMeshInterface()
+mesh_interface.write('earth_land.stl', land_vertices, faces)
+mesh_interface.write('earth_sea.stl', sea_vertices, sea_faces)
+mesh_interface.write('earth_ice.stl', ice_vertices, ice_faces)
+```
 
 Take a look at the `src/tools/tricolor_earth.py` example script, available as `meshdd_tricolor_earth` after installation.
 
