@@ -1,0 +1,2 @@
+- generic script that gather other scripts features
+- tests
