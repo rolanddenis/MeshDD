@@ -32,14 +32,14 @@ def create_bicolor_sphere(texture,
             print(*args, **kwargs)
 
     # Creating sphere mesh
-    info("Creating sphere mesh...", end='', flush=True)
+    info("Creating sphere mesh... ", end='', flush=True)
     vertices, faces, normals, tcoords = shapes.create_sphere(Ntheta, Nphi)
     vertices *= radius
     info("Done.")
 
     # Reading texture image if needed
     if type(texture) is str:
-        info("Reading texture...", end='', flush=True)
+        info("Reading texture... ", end='', flush=True)
         import imageio
         texture = meshdd.get_texture_from_image(imageio.imread(texture))
         info("Done.")
