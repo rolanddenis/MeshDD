@@ -3,3 +3,4 @@ from .mesh_interfaces import MeshIOInterface, PyMeshInterface, TriMeshInterface
 from .bicolor_sphere import create_bicolor_sphere
 from .tricolor_earth import create_tricolor_earth
 from .bicolor_mesh import create_bicolor_mesh
+from .topo_bathy_earth import create_topo_bathy_earth
