@@ -89,7 +89,7 @@ def create_topo_bathy_earth(topo_texture, bathy_texture,
         bathy_texture = gaussian_filter(bathy_texture.astype(float), sigma=bathy_sigma)
     info("Done.")
 
-    # Curving the sea
+    # Carving the sea
     info("Carving the sea... ", end='', flush=True)
     vertex_color = meshdd.get_vertex_color_from_texture(tcoords, bathy_texture)
     if vertex_color.ndim > 1:
@@ -99,7 +99,7 @@ def create_topo_bathy_earth(topo_texture, bathy_texture,
     land_vertices = meshdd.displace_vertices(vertices, normals, -bathy_depth * vertex_color / 255., displace_mask)
     info("Done.")
 
-    # Sea mesh as difference with the sphere
+    # Sea mesh as the difference with the sphere
     info("Sea mesh... ", end='', flush=True)
     sea_vertices, sea_faces = meshdd.get_boolean_difference(vertices, land_vertices, faces, displace_mask)
     info("Done.")
