@@ -159,7 +159,7 @@ _, _, normals, _ = mesh_interface.read("hevea_sphere_IC1.ply")
 <p align="center"><img src="doc/images/earth_land_sea_ice.jpg?raw=true" alt="Earth with land, sea and ice" height="400px"></p>
 
 We can also chain displacements and differences to split a mesh in more than two parts,
-for example to extract land, sea and ice parts from [The Blue Marble](https://visibleearth.nasa.gov/images/57730):
+for example to extract land, sea and ice parts from [NASA Visible Earth](https://visibleearth.nasa.gov/images/57730):
 
 ```python
 import numpy as np
@@ -204,6 +204,54 @@ Take a look at the `src/tools/tricolor_earth.py` example script, available as `m
 
 ## Earth with amplified topography and bathymetry
 
-(e.g. to print the sea with a transparent filament)
+<p align="center"><img src="doc/images/topo_bathy_earth.jpg?raw=true" alt="Earth with land, sea and ice" height="400px"></p>
 
-**TODO**
+We can also vary the displacement depth depending on a texture and get two parts mesh of the Earth with amplified topography and bathymetry, e.g. to print the sea with a transparent filament.
+
+Starting with [topography](https://visibleearth.nasa.gov/images/73934) and [bathymetry](https://visibleearth.nasa.gov/images/73963) textures in grayscale from [NASA Visible Earth](https://visibleearth.nasa.gov/):
+```python
+import numpy as np
+import meshdd
+import meshdd.tools
+import imageio
+
+# Creating a sphere of radius 50 with 1001x1001 vertices
+vertices, faces, normals, tcoords = meshdd.tools.create_sphere(1001, 1001)
+vertices *= 50
+
+# Raising pixels limit per image
+import PIL.Image
+PIL.Image.MAX_IMAGE_PIXELS = 20000**2
+
+# Reading topography texture image
+topo_texture = meshdd.get_texture_from_image(imageio.imread("gebco_08_rev_elev_21600x10800.png"))
+
+# Reading bathymetry texture image
+bathy_texture = meshdd.get_texture_from_image(imageio.imread("gebco_08_rev_bath_21600x10800.png"))
+
+# Smoothing...
+from scipy.ndimage.filters import gaussian_filter
+topo_texture = gaussian_filter(topo_texture.astype(float), sigma=10)
+bathy_texture = gaussian_filter(bathy_texture.astype(float), sigma=10)
+
+# Carving the sea
+vertex_color = meshdd.get_vertex_color_from_texture(tcoords, bathy_texture)
+vertex_color = 255 - vertex_color # Reverse values
+displace_mask = vertex_color >= 5
+land_vertices = meshdd.displace_vertices(vertices, normals, -5 * vertex_color / 255., displace_mask)
+
+# Sea mesh as the difference with the sphere
+sea_vertices, sea_faces = meshdd.get_boolean_difference(vertices, land_vertices, faces, displace_mask)
+
+# Bringing the mountains out
+vertex_color = meshdd.get_vertex_color_from_texture(tcoords, topo_texture)
+displace_mask = vertex_color >= 5
+land_vertices = meshdd.displace_vertices(land_vertices, normals, 5 * vertex_color / 255., displace_mask)
+
+# Saving the meshes using trimesh
+mesh_interface = meshdd.tools.TriMeshInterface()
+mesh_interface.write('earth_land.stl', land_vertices, faces)
+mesh_interface.write('earth_sea.stl', sea_vertices, sea_faces)
+```
+Take a look at the `src/tools/topo_bathy_earth.py` example script, available as `meshdd_topo_bathy_earth` after installation.
+
